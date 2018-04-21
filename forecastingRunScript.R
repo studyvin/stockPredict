@@ -3,10 +3,23 @@
 # determine which stocks our modelling is most accurate
 #-----------------------------------------------------------
 
-source('c:/users/rtupling/downloads/forecastingFunction.R')
+## This is the path to your local copy of the repository 
+repoPath <- '~/project/stockPredict/'
+## data path
+dataPath <- paste0(repoPath,'data/')
+
+
+## source all of the functions
+cc <- lapply(list.files(paste0(repoPath,'function/'),pattern='*.R',full.names=TRUE),source)
+
+
+
 
 # list of tech, energy, healthcare, and finance stock symbols
-allSym <- read.csv('c:/users/rtupling/downloads/allSymbols.csv')
+allSym <- read.csv(paste0(dataPath,'allSymbols.csv'))
+
+
+
 
 
 # in future runs, it would be nice to give the predictStockPrice() function a giant list of stocks and let
