@@ -20,67 +20,77 @@
 #' 
 
 
-predictStockPrice <- function(symbol = 'MSFT',
-                              nTimePeriods = 10,
-                              firstDate = '2015-01-01'
+forestStockPrice <- function(responseStock,
+                              covarStock,
+                              interTimePeriod,
+                              startDate,
+                              endDate
                               ){
     ## for debugging
     ##symbol <- 'GOOGL';nTimePeriods <- 10;firstDate = '2015-01-01'
 
-    options(stringsAsFactors = F)
+
     ## libraries
-    ## library(quantmod)
-    ## library(tseries)
-    ## library(timeSeries)
-    ## library(forecast)
-    ## library(xts)
-    library(TSA)
+    library(quantmod)
+    library(tseries)
+    library(timeSeries)
+    library(forecast)
+    library(xts)
+    ## library(TSA)
     
-    sym = symbol
+
+
+
+    stockData <- readDataLag(lagStock=covarStock,predStock=responseStock,interTimePeriod=interTimePeriod,startDate=startDate,endDate=endDate)
+
+    head(stockData)
+
     
-    datURL <- paste0('https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&outputsize=full&apikey=LQY762JM5VDA5ETC&symbol=',sym,'&datatype=csv')
-    
-    dat <- read.csv(datURL)
-    
-    ## subset to smaller timeframe - everything from 2015 to current
-    dat <- subset(dat, timestamp > firstDate)
+    futureStock <- readStockData(symbol=responseStock,startDate=head(stockData,1)[,'responseDate'])
+
+
+    ## new covar stock for future predictions
+    newCovarStock <- readStockData(symbol=covarStock,startDate=head(stockData,1)[,'covarDate'],Sys.Date()-interTimePeriod)
+
+    futureStock
+    newCovarStock
+
     
     ## Convert stock data to xts 
-    stockPrices <- xts(dat$close,as.Date(dat$timestamp))
+    stockResponse <- xts(stockData$responsePrice,as.Date(stockData$responseDate))
+    stockCovar <- xts(stockData$covarPrice,as.Date(stockData$responseDate))
     
-    trainStock <- head(stockPrices,nrow(stockPrices)-nTimePeriods)
-    testStock <- tail(stockPrices,nTimePeriods)
-    dim(testStock)
+    nCores <- parallel::detectCores()
 
-    tail(trainStock)
-    testStock
-
-
-    auto.arima(trainStock,ic = 'aicc')
     t1 <- Sys.time()
-    fit <- auto.arima(trainStock, d = NA, D = NA, max.p = 15, max.q = 15, max.P = 2,
-                      max.Q = 2, max.order = 50, max.d = 5, max.D = 1, start.p = 2,
+    fit <- auto.arima(stockResponse, d = NA, D = NA, max.p = 10, max.q = 10, max.P = 2,
+                      max.Q = 2, max.order = 50, max.d = 5, max.D = 5, start.p = 2,
                       start.q = 2, start.P = 1, start.Q = 1, stationary = FALSE,
-                      seasonal = TRUE, ic = c("bic"), stepwise = FALSE,
+                      seasonal = TRUE, ic = c("aicc"), stepwise = FALSE,
                       trace = FALSE, approximation = FALSE,
-                      truncate = NULL, xreg = NULL, test = c('pp'),
+                      truncate = NULL, xreg = stockCovar, test = c('pp'),
                       seasonal.test = c("seas", "ocsb", "hegy", "ch"), allowdrift = TRUE,
-                      allowmean = TRUE, lambda = 'auto', biasadj = FALSE, parallel = FALSE,
-                      num.cores = 2)
+                      allowmean = TRUE, lambda = 'auto', biasadj = FALSE, parallel = TRUE,
+                      num.cores = nCores)
     t2 <- Sys.time()
     t2-t1
 
-fit
-
-    attributes(fit)
-
-    arima(trainStock,order=c(2,0,0))
+    summary(fit)
 
 
-plot(trainStock)
-    
-plot(forecast(fit,level=.95,h=nTimePeriods),add=TRUE)
+
+    fCast <- forecast(fit,level=.95,xreg=with(newCovarStock,xts(close,as.Date(timestamp))))
+
+    fCast
 
 
+
+    dev.new();plot(fCast)
+
+
+
+    out <- list(modelFit=fit,foreCast=fCast)
+
+    return(out)
     
 } # end function

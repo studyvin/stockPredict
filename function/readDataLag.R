@@ -23,22 +23,28 @@ readDataLag <- function(lagStock,                  # stock that "predicts" the p
   lagDat$date <- as.Date(lagDat$timestamp)
   
   # subset data to time period of interest and  - this is the overall time period AT used
-  predDat <- predDat[predDat$date>as.Date(startDate)+interTimePeriod & predDat$date<as.Date(endDate)+interTimePeriod,]
-  lagDat <- lagDat[lagDat$date>as.Date(startDate) & lagDat$date<as.Date(endDate),]
+  responseDat <- predDat[predDat$date>as.Date(startDate) & predDat$date<as.Date(endDate),]
+  covarDat <- lagDat[lagDat$date>as.Date(startDate) -interTimePeriod& lagDat$date<as.Date(endDate)-interTimePeriod,]
   
-  # bring the two stock prices together
-  tmp <- data.frame(predPrice = predDat$close,
-                    predDate = predDat$date,
-                    lagPrice = lagDat$close,
-                    lagDate = lagDat$date)
-  
-  return(tmp)
-  
-}
 
-# example
-# datForJS <- readDataLag(predStock = 'MSFT',
-#                         lagStock = 'BE',
-#                         interTimePeriod = 21,
-#                         startDate = '2017-01-01',
-#                         endDate= '2017-12-31')
+
+  if(nrow(responseDat)>nrow(covarDat)){
+
+      nrow(responseDat <- responseDat[1:nrow(covarDat),])
+
+  }else if(nrow(responseDat)<nrow(covarDat)){
+
+      nrow(covarDat <- covarDat[1:nrow(responseDat),])
+
+  }#end else if
+
+  # bring the two stock prices together
+  out <- data.frame(responsePrice = responseDat$close,
+                    responseDate = responseDat$date,
+                    covarPrice = covarDat$close,
+                    covarDate = covarDat$date)
+  
+  return(out)
+  
+} # end readDataLag function
+
